@@ -11,9 +11,17 @@
 
 # awk_plus_plus
 
-> Add a short description here!
+> A domain-specific language designed for natural language and formal language processing.
 
-A longer description of your project goes here...
+## Features
+* Fuzzy modern regex engine
+* Semantic search
+* Text classification
+* Named entity recognition
+* Entity extraction
+* Entity linking
+* B-tree search 
+
 
 ## Installation from pip
 Install the package with:
@@ -24,7 +32,7 @@ pip install awk_plus_plus
 ## Installation from Git
 Clone the repository with:
 ```bash
-git clone https://github.com/<USER>/awk_plus_plus.git
+git clone https://github.com/sanchezcarlosjr/awk_plus_plus.git
 ```
 
 In order to set up the necessary environment:
