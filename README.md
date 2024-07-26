@@ -30,6 +30,12 @@ Install the package with:
 pip install awk_plus_plus
 ```
 
+# Usage
+match(/x/g) {
+match
+}
+
+
 ## Note
 
 This project has been set up using [PyScaffold] 4.5 and the [dsproject extension] 0.0.post167+g4386552.
