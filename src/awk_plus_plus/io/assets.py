@@ -41,7 +41,7 @@ def read_from(path):
     file_type = guess_type(path)
     path_str = str(path)
     try:
-        if 'text/csv' in file_type:
+        if 'text/csv' in file_type or 'application/csv' in file_type:
             return pd.read_csv(path_str, engine='pyarrow')
         elif 'application/json' in file_type:
             return pd.read_json(path_str, dtype_backend='pyarrow')

@@ -1,4 +1,6 @@
 from awk_plus_plus import __version__, setup_logging, _logger
+from awk_plus_plus.io.assets import pd
+import duckdb as db
 
 __author__ = "sanchezcarlosjr"
 __copyright__ = "sanchezcarlosjr"
@@ -16,6 +18,7 @@ import getpass
 from typing import Optional
 from typing_extensions import Annotated
 from rich import print
+import json
 
 app = typer.Typer()
 
@@ -24,6 +27,19 @@ app = typer.Typer()
 def version():
     print(f"awk_plus_plus {__version__}")
 
+
+@app.command()
+def where(expression: str, file: str, pretty: Annotated[bool, typer.Option("--pretty")]=False):
+    _logger.info("Reading file...")
+    df = pd.read_from(file)
+    connection = db.connect(":memory:")
+    connection.sql("CREATE OR REPLACE TABLE dataset AS SELECT * FROM df")
+    result = connection.sql(f"SELECT * FROM dataset WHERE {expression}").to_df()
+    if pretty:
+        print(result)
+    else:
+        print(json.dumps(df.to_dict('records')))
+    return result
 
 @app.command()
 def run_demo(share: Annotated[bool, typer.Option(help="Share with Gradio servers.")] = False):
