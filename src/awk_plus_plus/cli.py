@@ -14,8 +14,6 @@ from awk_plus_plus.dash import set_dict, walk
 from awk_plus_plus.io.assets import pd, read_from
 import sys 
 import os.path
-import dotenv
-dotenv.load_dotenv()
 
 __author__ = "sanchezcarlosjr"
 __copyright__ = "sanchezcarlosjr"
