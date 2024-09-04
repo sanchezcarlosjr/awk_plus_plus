@@ -7,7 +7,7 @@ import duckdb as db
 import jq
 from dask.threaded import get
 from duckdb.typing import VARCHAR
-
+from rich.console import Console
 from awk_plus_plus import __version__, setup_logging, _logger
 from awk_plus_plus.actions import Actions
 from awk_plus_plus.dash import set_dict, walk
@@ -94,6 +94,7 @@ cti interpret '{"x": std.format("sql:SELECT * FROM %s", self.z), "z": "dataset",
 def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = None,
               descriptor: Annotated[str, typer.Option(help="Describe what the expression is.")] = ".",
               verbose: Annotated[int, typer.Option("-v", help="Describe the verbosity.")] = 3,
+              pretty: Annotated[bool, typer.Option("-p", help="Pretty print.")] = False,
               db_name: Annotated[str, typer.Option(help="Database filename.")] = "db.sql"):
     setup_logging(verbose * 10)
     expression = os.path.isfile(expression) and open(expression).read() or expression
@@ -105,6 +106,7 @@ def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = No
     object_directory = pd.DataFrame({"object_name": urls,
         'normalized_name': [os.path.basename(url).replace("-", "_").replace(".", "_") for url in urls]})
     connection.sql("CREATE OR REPLACE TABLE object_directory AS SELECT * FROM object_directory;")
+    console = Console()
     for url in urls:
         _logger.info(url)
         try:
@@ -118,6 +120,7 @@ def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = No
     di['db_connection'] = lambda key: connect
     di['actions'] = actions
     walk_dag = inject(walk)
+    items = []
     for item in jq.compile(descriptor).input_value(json_obj):
         graph = {}
         keys = []
@@ -127,7 +130,12 @@ def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = No
         results = get(graph, keys)
         for key, value in enumerate(keys):
             item = set_dict(dictionary=item, path=value, value=results[key])
-        print(json.dumps(item, default=serializer))
+        if verbose <= 3 and not pretty:
+            print(json.dumps(item, default=serializer))
+        if verbose <= 3 and pretty:
+            console.print(json.dumps(item, default=serializer))
+        items.append(item)
+    return items
 
 
 @app.command()

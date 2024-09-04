@@ -8,6 +8,10 @@ class ParseResult:
     def __init__(self, url):
         self.url = url.replace("\n", " ")
         matches = re.match(r"([a-z+]+):?(.+)", self.url)
+        if not matches:
+            self.scheme = ""
+            self.path = ""
+            return
         self.scheme = matches.group(1)
         self.path = matches.group(2)
     def geturl(self):
