@@ -16,7 +16,7 @@ class Actions:
                     return f, args
             return parsed_url.geturl()
         except Exception as e:
-            return url, ""
+            return url
 
     def command(self, matcher):
         def decorate(f):

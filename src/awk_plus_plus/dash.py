@@ -2,12 +2,15 @@ from awk_plus_plus.actions import Actions
 
 
 def set_dict(dictionary: dict, path: str, value: str):
-    if isinstance(dictionary, str):
+    if isinstance(dictionary, str) or isinstance(value, int) or isinstance(value, float):
         return value
     keys = path.strip(".").split(".")
     root = dictionary
     for key in keys[:-1]:
-        dictionary = dictionary.setdefault(key, {})
+        if isinstance(dictionary, dict):
+            dictionary = dictionary.setdefault(key, {})
+        if isinstance(dictionary, list):
+            dictionary = dictionary[int(key)]
     dictionary[keys[-1]] = value
     return root
 

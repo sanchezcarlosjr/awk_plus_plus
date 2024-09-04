@@ -1,10 +1,7 @@
 import sys
 import logging
 
-import dotenv
-
-dotenv.load_dotenv()
-
+import pluggy
 
 if sys.version_info[:2] >= (3, 8):
     # TODO: Import directly (no need for conditional) when `python_requires = >= 3.8`
@@ -35,9 +32,5 @@ def setup_logging(loglevel):
     logging.basicConfig(level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S")
 
 
-def pipeline():
-   x = 0
-   def predict():
-      _logger.debug(x)
-      return "Hello "+str(x)
-   return predict
+"""Marker to be imported and used in plugins (and for own implementations)"""
+hook_implementation = pluggy.HookimplMarker(__name__)

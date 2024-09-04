@@ -1,14 +1,21 @@
+import urllib.parse
 from datetime import datetime
+from pathlib import Path
 
 import _jsonnet
 import duckdb as db
 import jq
 from dask.threaded import get
+from duckdb.typing import VARCHAR
 
 from awk_plus_plus import __version__, setup_logging, _logger
 from awk_plus_plus.actions import Actions
 from awk_plus_plus.dash import set_dict, walk
-from awk_plus_plus.io.assets import pd
+from awk_plus_plus.io.assets import pd, read_from
+import sys 
+import os.path
+import dotenv
+dotenv.load_dotenv()
 
 __author__ = "sanchezcarlosjr"
 __copyright__ = "sanchezcarlosjr"
@@ -22,13 +29,13 @@ __license__ = "MIT"
 import typer
 import os
 import getpass
-from typing import Optional
+from typing import Optional, List
 from typing_extensions import Annotated
-from rich import print
 import json
 from urllib.parse import ParseResult
 from kink import di, inject
 
+from awk_plus_plus.io.http import post
 from awk_plus_plus.parser import SQLTemplate
 
 app = typer.Typer()
@@ -42,30 +49,67 @@ def version():
 actions = Actions()
 
 
+def eval_jq(json_str: str, expression: str):
+    return jq.compile(expression).input_text(json_str).text()
+
+def serializer(obj):
+    if isinstance(obj, pd.DataFrame):
+        return obj.to_dict(orient='records')
+    elif isinstance(obj, datetime):
+        return obj.isoformat()
+    return json.JSONEncoder().default(obj)
+
 @actions.command(matcher=lambda parsed_url: parsed_url.scheme == "sql" and parsed_url)
 def sql(sql: ParseResult, db_connection: db.DuckDBPyConnection):
-    return db_connection.sql(SQLTemplate(sql.path).render()).to_df().to_dict('records')
+    connection = db_connection()
+    return connection.sql(SQLTemplate(sql.path).render()).to_df().to_dict('records')
 
+
+def create_connection(name):
+    def connect():
+        return db.connect(name, config={'threads': 10})
+    connection = connect()
+    connection.sql("""
+                    INSTALL json;
+                    LOAD json;
+                    INSTALL excel;
+                    LOAD excel;
+                    INSTALL spatial;
+                    LOAD spatial;
+                """
+                   )
+    connection.create_function('http_post', post, [VARCHAR, VARCHAR], VARCHAR, exception_handling="return_null")
+    connection.create_function('jq', eval_jq, [VARCHAR, VARCHAR], VARCHAR, exception_handling="return_null")
+    return connect
 
 @app.command(help="""
 Interpret an expression. Example:
 cti interpret '{"x": std.format("sql:SELECT * FROM %s", self.z), "z": "dataset", "exec_time": std.extVar("start_time")}' data/external/passwords.csv
 """)
-def interpret(expression: str, file: str, descriptor: Annotated[str, typer.Option(help="Describe what the expression is.")] = "."):
+def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = None, descriptor: Annotated[str, typer.Option(help="Describe what the expression is.")] = ".", verbose: Annotated[int, typer.Option("-v", help="Describe the verbosity.")] = 3, db_name: Annotated[str, typer.Option(help="Database filename.")] = "db.sql"):
+    setup_logging(verbose * 10)
+    expression = os.path.isfile(expression) and open(expression).read() or expression
     json_str = _jsonnet.evaluate_snippet("snippet", expression, ext_vars={'start_time': str(datetime.now())})
     json_obj = json.loads(json_str)
-    df = pd.read_from(file)
-    connection = db.connect(":memory:")
-    connection.sql(
-        """
-       INSTALL excel;
-       LOAD excel;
-       INSTALL spatial;
-       LOAD spatial;
-    """
-    )
-    connection.sql(f"CREATE OR REPLACE TABLE dataset AS SELECT * FROM df")
-    di['db_connection'] = connection
+    connect = create_connection(db_name)
+    connection = connect()
+    urls = urls or []
+    object_directory = pd.DataFrame({
+        "object_name": urls,
+        'normalized_name': [os.path.basename(url).replace("-", "_").replace(".", "_") for url in urls]
+    })
+    connection.sql("CREATE OR REPLACE TABLE object_directory AS SELECT * FROM object_directory;")
+    for url in urls:
+        _logger.info(url)
+        try:
+            url = urllib.parse.urlparse(url).path
+            filename = os.path.basename(url).replace("-", "_").replace(".", "_")
+            result = read_from(url)
+            result['source_file'] = url
+            connection.sql(f"CREATE TABLE IF NOT EXISTS '{filename}' AS SELECT * FROM result;")
+        except Exception as e:
+            _logger.warn(e)
+    di['db_connection'] = lambda key: connect
     di['actions'] = actions
     walk_dag = inject(walk)
     for item in jq.compile(descriptor).input_value(json_obj):
@@ -77,8 +121,14 @@ def interpret(expression: str, file: str, descriptor: Annotated[str, typer.Optio
         results = get(graph, keys)
         for key, value in enumerate(keys):
             item = set_dict(dictionary=item, path=value, value=results[key])
-        print(json.dumps(item))
+        print(json.dumps(item, default=serializer))
 
+
+@app.command()
+def f(expression : str, urls: Annotated[List[str], typer.Argument()] = None, x : Annotated[str, typer.Option(help="Describe what the expression is.")] = "."):
+    _logger.info("File...")
+    urls = urls or []
+    print(expression, urls, x)
 
 @app.command()
 def run_demo(share: Annotated[bool, typer.Option(help="Share with Gradio servers.")] = False):

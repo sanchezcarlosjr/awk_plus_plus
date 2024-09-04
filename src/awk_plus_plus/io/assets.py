@@ -4,6 +4,9 @@ import mimetypes
 import os
 import re
 from pathlib import Path
+import warnings
+
+warnings.filterwarnings('ignore', category=UserWarning, module='openpyxl')
 
 import magic
 import pandas as pd
@@ -42,11 +45,11 @@ def read_from(path):
     path_str = str(path)
     try:
         if 'text/csv' in file_type or 'application/csv' in file_type:
-            return pd.read_csv(path_str, engine='pyarrow')
+            return pd.read_csv(path_str, dtype_backend='pyarrow', dtype='str')
         elif 'application/json' in file_type:
             return pd.read_json(path_str, dtype_backend='pyarrow')
         elif 'application/vnd.ms-excel' in file_type or 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' in file_type:
-            return pd.read_excel(path_str, dtype_backend='pyarrow')
+            return pd.read_excel(path_str, dtype_backend='pyarrow', dtype='str')
         elif 'application/octet-stream' in file_type:
             if path_str.endswith('.parquet'):
                 return pd.read_parquet(path_str, engine='pyarrow')
@@ -63,6 +66,7 @@ def read_from(path):
         else:
             return pd.DataFrame()
     except Exception as e:
+        print(e)
         return pd.DataFrame()
 
 
