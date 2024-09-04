@@ -1,6 +1,6 @@
+import os.path
 import urllib.parse
 from datetime import datetime
-from pathlib import Path
 
 import _jsonnet
 import duckdb as db
@@ -12,9 +12,6 @@ from awk_plus_plus import __version__, setup_logging, _logger
 from awk_plus_plus.actions import Actions
 from awk_plus_plus.dash import set_dict, walk
 from awk_plus_plus.io.assets import pd, read_from
-import sys 
-import os.path
-
 
 __author__ = "sanchezcarlosjr"
 __copyright__ = "sanchezcarlosjr"
@@ -51,12 +48,14 @@ actions = Actions()
 def eval_jq(json_str: str, expression: str):
     return jq.compile(expression).input_text(json_str).text()
 
+
 def serializer(obj):
     if isinstance(obj, pd.DataFrame):
         return obj.to_dict(orient='records')
     elif isinstance(obj, datetime):
         return obj.isoformat()
     return json.JSONEncoder().default(obj)
+
 
 @actions.command(matcher=lambda parsed_url: parsed_url.scheme == "sql" and parsed_url)
 def sql(sql: ParseResult, db_connection: db.DuckDBPyConnection):
@@ -69,11 +68,13 @@ def create_connection(name):
         connection = db.connect(name, config={'threads': 10})
         try:
             connection.create_function('http_post', post, [VARCHAR, VARCHAR], VARCHAR, exception_handling="return_null")
-            connection.create_function('http_get', http_get, [VARCHAR, VARCHAR], VARCHAR, exception_handling="return_null")
+            connection.create_function('http_get', http_get, [VARCHAR, VARCHAR], VARCHAR,
+                                       exception_handling="return_null")
             connection.create_function('jq', eval_jq, [VARCHAR, VARCHAR], VARCHAR, exception_handling="return_null")
         except Exception as e:
             _logger.warn(e)
         return connection
+
     connection = connect()
     connection.sql("""
                     INSTALL json;
@@ -82,15 +83,18 @@ def create_connection(name):
                     LOAD excel;
                     INSTALL spatial;
                     LOAD spatial;
-                """
-                   )
+                """)
     return connect
+
 
 @app.command(help="""
 Interpret an expression. Example:
 cti interpret '{"x": std.format("sql:SELECT * FROM %s", self.z), "z": "dataset", "exec_time": std.extVar("start_time")}' data/external/passwords.csv
 """)
-def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = None, descriptor: Annotated[str, typer.Option(help="Describe what the expression is.")] = ".", verbose: Annotated[int, typer.Option("-v", help="Describe the verbosity.")] = 3, db_name: Annotated[str, typer.Option(help="Database filename.")] = "db.sql"):
+def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = None,
+              descriptor: Annotated[str, typer.Option(help="Describe what the expression is.")] = ".",
+              verbose: Annotated[int, typer.Option("-v", help="Describe the verbosity.")] = 3,
+              db_name: Annotated[str, typer.Option(help="Database filename.")] = "db.sql"):
     setup_logging(verbose * 10)
     expression = os.path.isfile(expression) and open(expression).read() or expression
     json_str = _jsonnet.evaluate_snippet("snippet", expression, ext_vars={'start_time': str(datetime.now())})
@@ -98,10 +102,8 @@ def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = No
     connect = create_connection(db_name)
     connection = connect()
     urls = urls or []
-    object_directory = pd.DataFrame({
-        "object_name": urls,
-        'normalized_name': [os.path.basename(url).replace("-", "_").replace(".", "_") for url in urls]
-    })
+    object_directory = pd.DataFrame({"object_name": urls,
+        'normalized_name': [os.path.basename(url).replace("-", "_").replace(".", "_") for url in urls]})
     connection.sql("CREATE OR REPLACE TABLE object_directory AS SELECT * FROM object_directory;")
     for url in urls:
         _logger.info(url)
@@ -129,10 +131,12 @@ def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = No
 
 
 @app.command()
-def f(expression : str, urls: Annotated[List[str], typer.Argument()] = None, x : Annotated[str, typer.Option(help="Describe what the expression is.")] = "."):
+def f(expression: str, urls: Annotated[List[str], typer.Argument()] = None,
+      x: Annotated[str, typer.Option(help="Describe what the expression is.")] = "."):
     _logger.info("File...")
     urls = urls or []
     print(expression, urls, x)
+
 
 @app.command()
 def run_demo(share: Annotated[bool, typer.Option(help="Share with Gradio servers.")] = False):
