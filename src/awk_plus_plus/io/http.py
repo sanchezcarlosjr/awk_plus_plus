@@ -3,6 +3,7 @@ import ssl
 
 import hishel
 import httpx
+from PyQt5.uic.Compiler.qobjectcreator import logger
 from tenacity import retry, retry_if_exception_type
 
 controller = hishel.Controller(
@@ -55,8 +56,10 @@ def request(method, url, headers=None, extensions=None):
         body = response.json()
         if response.status_code != 200:
             return json.dumps(body)
+        logger.info(body)
         return json.dumps(body)
     except Exception as e:
+        logger.warn(url+str(e))
         return json.dumps({"error": str(e)})
 
 
@@ -64,5 +67,5 @@ def post(url, headers=None):
     return request("POST", url, headers)
 
 
-def get(url, headers=None):
+def http_get(url, headers=None):
     return request("GET", url, headers)

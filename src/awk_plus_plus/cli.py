@@ -14,8 +14,7 @@ from awk_plus_plus.dash import set_dict, walk
 from awk_plus_plus.io.assets import pd, read_from
 import sys 
 import os.path
-import dotenv
-dotenv.load_dotenv()
+
 
 __author__ = "sanchezcarlosjr"
 __copyright__ = "sanchezcarlosjr"
@@ -35,7 +34,7 @@ import json
 from urllib.parse import ParseResult
 from kink import di, inject
 
-from awk_plus_plus.io.http import post
+from awk_plus_plus.io.http import post, http_get
 from awk_plus_plus.parser import SQLTemplate
 
 app = typer.Typer()
@@ -67,7 +66,14 @@ def sql(sql: ParseResult, db_connection: db.DuckDBPyConnection):
 
 def create_connection(name):
     def connect():
-        return db.connect(name, config={'threads': 10})
+        connection = db.connect(name, config={'threads': 10})
+        try:
+            connection.create_function('http_post', post, [VARCHAR, VARCHAR], VARCHAR, exception_handling="return_null")
+            connection.create_function('http_get', http_get, [VARCHAR, VARCHAR], VARCHAR, exception_handling="return_null")
+            connection.create_function('jq', eval_jq, [VARCHAR, VARCHAR], VARCHAR, exception_handling="return_null")
+        except Exception as e:
+            _logger.warn(e)
+        return connection
     connection = connect()
     connection.sql("""
                     INSTALL json;
@@ -78,8 +84,6 @@ def create_connection(name):
                     LOAD spatial;
                 """
                    )
-    connection.create_function('http_post', post, [VARCHAR, VARCHAR], VARCHAR, exception_handling="return_null")
-    connection.create_function('jq', eval_jq, [VARCHAR, VARCHAR], VARCHAR, exception_handling="return_null")
     return connect
 
 @app.command(help="""
