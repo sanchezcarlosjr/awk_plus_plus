@@ -3,8 +3,8 @@ import ssl
 
 import hishel
 import httpx
-from PyQt5.uic.Compiler.qobjectcreator import logger
 from tenacity import retry, retry_if_exception_type
+from awk_plus_plus import _logger as logger
 
 controller = hishel.Controller(
     cacheable_methods=["GET", "POST"],
