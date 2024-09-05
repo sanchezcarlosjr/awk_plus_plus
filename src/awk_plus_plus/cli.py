@@ -72,7 +72,7 @@ def create_connection(name):
                                        exception_handling="return_null")
             connection.create_function('jq', eval_jq, [VARCHAR, VARCHAR], VARCHAR, exception_handling="return_null")
         except Exception as e:
-            _logger.warn(e)
+            pass
         return connection
 
     connection = connect()
