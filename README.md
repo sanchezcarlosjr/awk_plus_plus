@@ -12,7 +12,7 @@
 
 # awk_plus_plus
 
-> A domain-specific language designed for natural language and formal language processing.
+> A domain-specific language designed for data orchestration. 
 
 ## Features
 * Fuzzy modern regex engine
@@ -30,10 +30,31 @@ Install the package with:
 pip install awk_plus_plus
 ```
 
-# Usage
-match(/x/g) {
-match
-}
+# CLI Usage
+You output your data to JSON with the `cti` command.
+
+## JSONNET support
+```bash
+cti interpret '1+2+3'
+```
+
+```bash
+cti interpret '{"foo": "bar"}'
+```
+
+## DuckDB support
+
+```bash
+cti interpret '{"foo": "sql: select 1+2+3"}'
+```
+
+## Smart Data reader
+
+```bash
+cti interpret '{"foo": "sql:SELECT * FROM file_csv"}' *.csv
+```
+
+
 
 
 ## Note
