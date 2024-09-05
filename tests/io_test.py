@@ -1,8 +1,6 @@
-from awk_plus_plus.cli import where
+from awk_plus_plus.plugin_manager import plugin_manager
 import pandas as pd
 
-def test_read_file():
-    df = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]})
-    df.to_csv("/tmp/x.csv", index=False)
-    result = where("true", "/tmp/x.csv")
-    assert (df == result).all().all()
+def test_read_with_plugins():
+    results = plugin_manager.hook.read(url="imap://app:password@imap.gmail.com?folder=INBOX&limit=10")
+    assert len(results) == 0

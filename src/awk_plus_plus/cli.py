@@ -33,6 +33,7 @@ from kink import di, inject
 
 from awk_plus_plus.io.http import post, http_get
 from awk_plus_plus.parser import SQLTemplate
+from awk_plus_plus.plugin_manager import plugin_manager
 
 app = typer.Typer()
 
@@ -60,7 +61,7 @@ def serializer(obj):
 @actions.command(matcher=lambda parsed_url: parsed_url.scheme == "sql" and parsed_url)
 def sql(sql: ParseResult, db_connection: db.DuckDBPyConnection):
     connection = db_connection()
-    return connection.sql(SQLTemplate(sql.path).render()).to_df().to_dict('records')
+    return connection.sql(SQLTemplate(sql.path.replace("`", "'")).render()).to_df().to_dict('records')
 
 
 def create_connection(name):
@@ -103,18 +104,15 @@ def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = No
     connect = create_connection(db_name)
     connection = connect()
     urls = urls or []
-    object_directory = pd.DataFrame({"object_name": urls,
-        'normalized_name': [os.path.basename(url).replace("-", "_").replace(".", "_") for url in urls]})
-    connection.sql("CREATE OR REPLACE TABLE object_directory AS SELECT * FROM object_directory;")
     console = Console()
     for url in urls:
         _logger.info(url)
         try:
-            url = urllib.parse.urlparse(url).path
-            filename = os.path.basename(url).replace("-", "_").replace(".", "_")
-            result = read_from(url)
-            result['source_file'] = url
-            connection.sql(f"CREATE TABLE IF NOT EXISTS '{filename}' AS SELECT * FROM result;")
+            results  = plugin_manager.hook.read(url=url)
+            for result in results:
+                normalized_name = result[0]['normalized_name']
+                data = result[1]
+                connection.sql(f"CREATE TABLE IF NOT EXISTS '{normalized_name}' AS SELECT * FROM data;")
         except Exception as e:
             _logger.warn(e)
     di['db_connection'] = lambda key: connect
@@ -133,17 +131,10 @@ def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = No
         if verbose <= 3 and not pretty:
             print(json.dumps(item, default=serializer))
         if verbose <= 3 and pretty:
-            console.print(json.dumps(item, default=serializer))
+            console.print_json(json=json.dumps(item, default=serializer))
         items.append(item)
     return items
 
-
-@app.command()
-def f(expression: str, urls: Annotated[List[str], typer.Argument()] = None,
-      x: Annotated[str, typer.Option(help="Describe what the expression is.")] = "."):
-    _logger.info("File...")
-    urls = urls or []
-    print(expression, urls, x)
 
 
 @app.command()
