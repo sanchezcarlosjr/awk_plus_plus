@@ -61,7 +61,7 @@ def serializer(obj):
 @actions.command(matcher=lambda parsed_url: parsed_url.scheme == "sql" and parsed_url)
 def sql(sql: ParseResult, db_connection: db.DuckDBPyConnection):
     connection = db_connection()
-    return connection.sql(SQLTemplate(sql.path.replace("`", "'")).render()).to_df().to_dict('records')
+    return connection.sql(SQLTemplate(sql.path.replace("`", "'").replace("´", "'")).render()).to_df().to_dict('records')
 
 
 def create_connection(name):
@@ -99,22 +99,35 @@ def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = No
               db_name: Annotated[str, typer.Option(help="Database filename.")] = "db.sql"):
     setup_logging(verbose * 10)
     expression = os.path.isfile(expression) and open(expression).read() or expression
-    json_str = _jsonnet.evaluate_snippet("snippet", expression, ext_vars={'start_time': str(datetime.now())})
+    try:
+      json_str = _jsonnet.evaluate_snippet("snippet", expression, ext_vars={'start_time': str(datetime.now())})
+    except:
+      json_str = _jsonnet.evaluate_snippet("snippet", "'"+expression+"'", ext_vars={'start_time': str(datetime.now())})
+      
     json_obj = json.loads(json_str)
     connect = create_connection(db_name)
     connection = connect()
     urls = urls or []
     console = Console()
+    directory = {
+       "normalized_name": [],
+       "name": [],
+    }
     for url in urls:
         _logger.info(url)
         try:
-            results  = plugin_manager.hook.read(url=url)
+            results = plugin_manager.hook.read(url=url)
             for result in results:
                 normalized_name = result[0]['normalized_name']
                 data = result[1]
                 connection.sql(f"CREATE TABLE IF NOT EXISTS '{normalized_name}' AS SELECT * FROM data;")
+                directory["normalized_name"].append(normalized_name)
+                directory["name"].append(url)
         except Exception as e:
             _logger.warn(e)
+    df_directory = pd.DataFrame.from_dict(directory)
+    if len(df_directory) > 0:
+        connection.sql("CREATE OR REPLACE TABLE object_directory AS select * from df_directory")
     di['db_connection'] = lambda key: connect
     di['actions'] = actions
     walk_dag = inject(walk)
@@ -128,9 +141,9 @@ def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = No
         results = get(graph, keys)
         for key, value in enumerate(keys):
             item = set_dict(dictionary=item, path=value, value=results[key])
-        if verbose <= 3 and not pretty:
+        if verbose <= 4 and not pretty:
             print(json.dumps(item, default=serializer))
-        if verbose <= 3 and pretty:
+        if verbose <= 4 and pretty:
             console.print_json(json=json.dumps(item, default=serializer))
         items.append(item)
     return items

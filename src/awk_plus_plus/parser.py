@@ -13,9 +13,8 @@ def s(evaluator: MacroEvaluator, value: str) -> str:
 
 
 @macro()
-def w(evaluator: MacroEvaluator, expression: str) -> str:
-    expression = expression.replace("`", "'")
-    return f"SELECT * FROM dataset WHERE {expression}"
+def grep(evaluator: MacroEvaluator, expression: str) -> str:
+    return f"SELECT * FROM object_directory where name ILIKE '%' || '{expression}' || '%'"
 
 
 class SQLTemplate:

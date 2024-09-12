@@ -17,7 +17,7 @@ class FileReader:
     @awk_plus_plus.hook_implementation
     def read(self, url: str):
         parsed_result : ParseResult = urllib.parse.urlparse(url)
-        if parsed_result.scheme != "file" or not parsed_result.scheme != "":
+        if parsed_result.scheme != "file" and parsed_result.scheme != "":
             return None
         url = urllib.parse.urlparse(url).path
         filename = os.path.basename(url).replace("-", "_").replace(".", "_")
