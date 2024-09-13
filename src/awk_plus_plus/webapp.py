@@ -22,7 +22,7 @@ def predict(x):
 
 with gr.Blocks(theme=theme, title="awk_plus_plus", css=css, analytics_enabled=False) as demo:
     gr.Markdown("# Greetings from awk_plus_plus!")
-    inp = gr.Textbox(placeholder="What is your name?")
+    inp = gr.Textbox(placeholder="Expression")
     out = gr.Textbox()
 
     inp.change(fn=predict, inputs=inp, outputs=out)

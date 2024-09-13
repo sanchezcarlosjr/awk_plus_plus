@@ -1,8 +1,7 @@
-from awk_plus_plus.url_action import MailReader
+from awk_plus_plus.plugin_manager import plugin_manager
 import pandas as pd
+from awk_plus_plus.actions import interpret_url
 
 def test_read_mail():
-    mr = MailReader()
-    df = mr.read("imap://EMAIL:APP PASSWORD@imap.gmail.com?folder=INBOX&limit=10")
-    print(df)
-    assert df is None
+    results = plugin_manager.hook.read(url=interpret_url("imap://{{keyring.awk_plus_plus.email}}:{{keyring.awk_plus_plus.primary_email_password}}@imap.gmail.com?folder=INBOX&limit=10"))
+    assert len(results) > 0

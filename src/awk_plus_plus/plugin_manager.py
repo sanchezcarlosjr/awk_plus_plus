@@ -3,15 +3,15 @@ import pluggy
 from awk_plus_plus import hook_implementation, dist_name
 from awk_plus_plus.url_action import FileReader, MailReader
 from awk_plus_plus import _logger as logger
+from urllib.parse import ParseResult
 
 hookspec = pluggy.HookspecMarker(dist_name)
-
 
 class UrlReader:
     """A hook specification namespace."""
 
     @hookspec
-    def read(self, url: str):
+    def read(self, url: ParseResult):
         """My special little hook that you can customize."""
 
 

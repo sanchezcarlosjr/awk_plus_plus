@@ -61,7 +61,10 @@ def serializer(obj):
 @actions.command(matcher=lambda parsed_url: parsed_url.scheme == "sql" and parsed_url)
 def sql(sql: ParseResult, db_connection: db.DuckDBPyConnection):
     connection = db_connection()
-    return connection.sql(SQLTemplate(sql.path.replace("`", "'").replace("´", "'")).render()).to_df().to_dict('records')
+    try:
+        return connection.sql(SQLTemplate(sql.path.replace("`", "'").replace("´", "'")).render()).to_df().to_dict('records')
+    except Exception as e:
+        return None 
 
 
 def create_connection(name):
@@ -103,7 +106,6 @@ def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = No
       json_str = _jsonnet.evaluate_snippet("snippet", expression, ext_vars={'start_time': str(datetime.now())})
     except:
       json_str = _jsonnet.evaluate_snippet("snippet", "'"+expression+"'", ext_vars={'start_time': str(datetime.now())})
-      
     json_obj = json.loads(json_str)
     connect = create_connection(db_name)
     connection = connect()

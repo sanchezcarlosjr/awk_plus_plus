@@ -1,8 +1,23 @@
 import numbers
 from venv import logger
-
 from kink import inject
 import re
+import keyring
+import urllib
+
+
+def replace_path(matches):
+    service = matches.group("service")
+    key = matches.group("key")
+    print(matches.group())
+    return keyring.get_password(service, key)
+   
+def interpret_url(url: str):
+    url = re.sub("{{(keyring\.(?P<service>\w+)\.(?P<key>\w+))}}", replace_path, url)
+    url = urllib.parse.urlparse(url)
+    return url
+
+
 
 class ParseResult:
     def __init__(self, url):
