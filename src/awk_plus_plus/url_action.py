@@ -19,7 +19,7 @@ class FileReader:
     def read(self, url: ParseResult):
         if url.scheme != "file" and url.scheme != "":
             return None
-        filename = os.path.basename(url.path).replace("-", "_").replace(".", "_")
+        filename = re.sub(r"-|\.| ", "_", os.path.basename(url.path).lower())
         result = read_from(url.path)
         result['source'] = url.path
         return {

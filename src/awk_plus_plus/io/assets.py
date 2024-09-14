@@ -45,7 +45,7 @@ def read_from(path):
     path_str = str(path)
     try:
         if 'text/csv' in file_type or 'application/csv' in file_type:
-            return pd.read_csv(path_str, dtype_backend='pyarrow', dtype='str')
+            return pd.read_csv(path_str, dtype_backend='pyarrow')
         elif 'application/json' in file_type:
             return pd.read_json(path_str, dtype_backend='pyarrow')
         elif 'application/vnd.ms-excel' in file_type or 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' in file_type:

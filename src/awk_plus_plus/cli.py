@@ -129,7 +129,7 @@ def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = No
                 directory["normalized_name"].append(normalized_name)
                 directory["name"].append(url)
         except Exception as e:
-            _logger.warn(e)
+            _logger.warn(e, url)
     df_directory = pd.DataFrame.from_dict(directory)
     if len(df_directory) > 0:
         connection.sql("CREATE OR REPLACE TABLE object_directory AS select * from df_directory")
