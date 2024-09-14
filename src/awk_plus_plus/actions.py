@@ -13,7 +13,7 @@ def replace_path(matches):
     return keyring.get_password(service, key)
    
 def interpret_url(url: str):
-    url = re.sub("{{(keyring\.(?P<service>\w+)\.(?P<key>\w+))}}", replace_path, url)
+    url = re.sub(r"{{(keyring\.(?P<service>\w+)\.(?P<key>\w+))}}", replace_path, url)
     url = urllib.parse.urlparse(url)
     return url
 
