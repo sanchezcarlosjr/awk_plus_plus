@@ -102,7 +102,7 @@ def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = No
               descriptor: Annotated[str, typer.Option(help="Describe what the expression is.")] = ".",
               verbose: Annotated[int, typer.Option("-v", help="Describe the verbosity.")] = 3,
               pretty: Annotated[bool, typer.Option("-p", help="Pretty print.")] = False,
-              db_name: Annotated[str, typer.Option(help="Database filename.")] = "db.sql"):
+               db_name: Annotated[str, typer.Option(help="Database filename. If you wish to run the database in memory, you have to write it as :memory:")] = "db.sql"):
     setup_logging(verbose * 10)
     expression = os.path.isfile(expression) and open(expression).read() or expression
     try:
