@@ -9,9 +9,10 @@ from dask.threaded import get
 from duckdb.typing import VARCHAR
 from rich.console import Console
 from awk_plus_plus import __version__, setup_logging, _logger
-from awk_plus_plus.actions import Actions
+from awk_plus_plus.actions import Actions, interpret_url
 from awk_plus_plus.dash import set_dict, walk
 from awk_plus_plus.io.assets import pd, read_from
+from awk_plus_plus.parser import SQLTemplate
 
 __author__ = "sanchezcarlosjr"
 __copyright__ = "sanchezcarlosjr"
@@ -64,6 +65,7 @@ def sql(sql: ParseResult, db_connection: db.DuckDBPyConnection):
     try:
         return connection.sql(SQLTemplate(sql.path.replace("`", "'").replace("´", "'")).render()).to_df().to_dict('records')
     except Exception as e:
+        _logger.warn(e)
         return None 
 
 
@@ -91,7 +93,8 @@ def create_connection(name):
     return connect
 
 
-@app.command(help="""
+@app.command("i", help="Interpret an expression from a file or a string. interpret alias")
+@app.command("interpret",help="""
 Interpret an expression. Example:
 cti interpret '{"x": std.format("sql:SELECT * FROM %s", self.z), "z": "dataset", "exec_time": std.extVar("start_time")}' data/external/passwords.csv
 """)
@@ -118,7 +121,7 @@ def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = No
     for url in urls:
         _logger.info(url)
         try:
-            results = plugin_manager.hook.read(url=url)
+            results = plugin_manager.hook.read(url=interpret_url(url))
             for result in results:
                 normalized_name = result[0]['normalized_name']
                 data = result[1]
@@ -159,7 +162,6 @@ def run_demo(share: Annotated[bool, typer.Option(help="Share with Gradio servers
     demo.launch(share=share)
 
 
-@app.command()
 def predict(file: str):
     _logger.info("Prediction...")
 
