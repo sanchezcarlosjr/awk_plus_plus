@@ -54,7 +54,7 @@ class Sql:
         if url.scheme.lower() != "sql":
             return None
         db = di['db_connection']
-        sql = url.path
+        sql = url.path.replace("`", "'")
         return db.sql(sql).to_df().to_dict('records')
 
 
