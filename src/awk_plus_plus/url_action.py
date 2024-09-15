@@ -1,6 +1,6 @@
 import os
 import urllib
-from urllib.parse import ParseResult
+from urllib.parse import ParseResult, parse_qs
 
 import awk_plus_plus
 from awk_plus_plus.io.assets import read_from
@@ -15,7 +15,6 @@ import keyring
 from kink import di
 import duckdb
 from awk_plus_plus.io.http import post, http_get
-import sys
 import sys
 
 class FileReader:
@@ -64,13 +63,16 @@ class Stream:
 
     @awk_plus_plus.hook_implementation
     def read(self, url: ParseResult):
-        if url.scheme.lower() != "stream":
+        netlocs = {'stdin': sys.stdin}
+        if url.scheme.lower() != "stream" or url.netloc.lower() not in netlocs:
             return None
+        queries = parse_qs(url.query)
+        transform = lambda x: x
+        if 'strip' in queries:
+            transform = lambda x: x.strip()
         lines = []
-        for line in sys.stdin:
-            if 'q' == line.rstrip():
-                break
-            lines.append(line)
+        for line in netlocs.get(url.netloc, sys.stdin):
+            lines.append(transform(line))
         return lines
 
 
