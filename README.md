@@ -17,12 +17,9 @@
 ## Features
 * Fuzzy modern regex engine
 * Semantic search
-* Text classification
-* Named entity recognition
-* Entity extraction
-* Entity linking
-* B-tree search 
-
+* Orthogonal Persistence based on DuckDB
+* Transparent reference with Jsonnet. We plan to execute this future with Dask.
+* URL interpreter to manage data sources.
 
 ## Installation from pip
 Install the package with:
@@ -34,27 +31,43 @@ pip install awk_plus_plus
 You output your data to JSON with the `cti` command.
 
 ## JSONNET support
+### Hello world
 ```bash
-cti interpret '1+2+3'
+cti i "Hello world" -p -v 4
 ```
 
+### Jsonnet support
 ```bash
-cti interpret '{"foo": "bar"}'
+cti i '{"keys":: ["AWK", "SED", "SHELL"], "languages": [std.asciiLower(x) for x in self.keys]}'
 ```
 
-## DuckDB support
+## URL interpreter
+Our step further is the URL interpreter which allows you to manage different data sources with an unique syntax across a set of plugins.
 
+## STDIN, STDOUT, STDERR
 ```bash
-cti interpret '{"foo": "sql: select 1+2+3"}'
+cti i '{"lines": interpret("stream://stdin?strip=true")}'
 ```
 
-## Smart Data reader
-
+## Imap
 ```bash
-cti interpret '{"foo": "sql:SELECT * FROM file_csv"}' *.csv
+cti i '{"emails": interpret("imap://USER:PASSWORD@HOST:993/INBOX")}'
 ```
 
+## Keyring
+```bash
+cti i '{"email":: interpret("keyring://backend/awk_plus_plus/email"), "emails": interpret($.email)}'
+```
 
+## Files
+```bash
+cti i 'interpret("**/*.csv")'
+```
+
+## SQL
+```bash
+cti i 'interpret("sql:SELECT * FROM email")'
+```
 
 
 ## Note
