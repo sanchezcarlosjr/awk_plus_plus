@@ -11,33 +11,63 @@ import pandas as pd
 import re
 from awk_plus_plus import _logger as logger
 import hashlib
+import keyring
+from kink import di
+import duckdb
 
 class FileReader:
     """A hook implementation namespace."""
 
     @awk_plus_plus.hook_implementation
     def read(self, url: ParseResult):
-        if url.scheme != "file" and url.scheme != "":
+        if url.scheme.lower() != "file" and url.scheme != "":
             return None
+        db = di['db_connection']
         filename = re.sub(r"-|\.| ", "_", os.path.basename(url.path).lower())
         result = read_from(url.path)
         result['source'] = url.path
-        return {
-            'normalized_name': filename
-        }, result
+        return result.to_dict('records')
 
+
+
+class Keyring:
+    """A hook implementation namespace."""
+
+    @awk_plus_plus.hook_implementation
+    def read(self, url: ParseResult):
+        if url.scheme.lower() != "keyring":
+            return None
+        backend = url.netloc
+        path = url.path.split("/")
+        service = path[1]
+        key = path[2]
+        return keyring.get_password(service, key)
+
+
+class Sql:
+    """A hook implementation namespace."""
+
+    @awk_plus_plus.hook_implementation
+    def read(self, url: ParseResult):
+        if url.scheme.lower() != "sql":
+            return None
+        db = di['db_connection']
+        sql = url.path
+        return db.sql(sql).to_df().to_dict('records')
 
 class MailReader:
     """A hook implementation namespace."""
 
     @awk_plus_plus.hook_implementation
     def read(self, url: ParseResult):
-        if url.scheme != "imap":
+        if url.scheme.lower() != "imap":
             return None
         netloc_matches = re.match('(?P<user>.+):(?P<password>.+)@(?P<host>.+)', url.netloc)
         if netloc_matches is None:
             logger.debug("Invalid IMAP URL")
             return None
+
+        db: duckdb.DuckDBPyConnection = di['db_connection']
         limit = int(-10 if (x:=re.match("limit=(-?[0-9]+)", url.query)) is None else x.group(1))
         mail = imaplib.IMAP4_SSL(netloc_matches.group('host'))
         mail.login(netloc_matches.group('user'), netloc_matches.group('password'))
@@ -47,15 +77,18 @@ class MailReader:
         status, messages = mail.search(None, "ALL")
         email_ids = messages[0].split()
 
-        normalized_name = hashlib.sha256(url.geturl().encode('utf-8')).hexdigest()[0:5]
-
-        subjects = []
-        senders = []
-        recipients = []
-        cc_list = []
-        bcc_list = []
-        bodies = []
-        dates = []
+        normalized_name = hashlib.sha256(url.geturl().encode('utf-8')).hexdigest()[0:6]
+        db.execute(f"""
+            CREATE TABLE IF NOT EXISTS {normalized_name} (
+                subject TEXT,
+                sender TEXT,
+                recipient TEXT,
+                cc TEXT,
+                bcc TEXT,
+                body TEXT,
+                date TEXT
+            )
+        """)
 
         for email_id in email_ids[limit:]:
             status, msg_data = mail.fetch(email_id, "(RFC822)")
@@ -73,10 +106,7 @@ class MailReader:
                     bcc_ = msg.get("BCC")
                     date_ = msg.get("Date")
 
-                    try:
-                        date_parsed = email.utils.parsedate_to_datetime(date_)
-                    except:
-                        date_parsed = date_
+                    date_parsed = date_
 
                     body = ""
 
@@ -91,28 +121,17 @@ class MailReader:
                     else:
                         body = msg.get_payload(decode=True).decode()
 
-                    subjects.append(subject)
-                    senders.append(from_)
-                    bodies.append(body)
-                    recipients.append(to_)
-                    cc_list.append(cc_)
-                    bcc_list.append(bcc_)
-                    dates.append(date_parsed)
 
-        # Create a DataFrame
-        email_data = pd.DataFrame({
-            "Subject": subjects,
-            "Sender": senders,
-            "Recipient": recipients,
-            "CC": cc_list,
-            "BCC": bcc_list,
-            "Body": bodies,
-            "Date": dates,
-            'source': normalized_name
-        })
+                query = f"""
+                 INSERT INTO {normalized_name} (subject, sender, recipient, cc, bcc, body, date)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)
+                """
+                values = (subject, from_, to_, cc_, bcc_, body, date_)
+                db.execute(query, values)
+
 
         mail.logout()
 
-        return {
-            'normalized_name': normalized_name
-        }, email_data
+        return normalized_name
+
+

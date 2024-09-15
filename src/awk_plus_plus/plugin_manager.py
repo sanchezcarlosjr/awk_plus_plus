@@ -1,7 +1,7 @@
 import pluggy
 
 from awk_plus_plus import hook_implementation, dist_name
-from awk_plus_plus.url_action import FileReader, MailReader
+from awk_plus_plus.url_action import FileReader, MailReader, Keyring, Sql
 from awk_plus_plus import _logger as logger
 from urllib.parse import ParseResult
 
@@ -20,6 +20,8 @@ def init_plugin_manager():
     pm.add_hookspecs(UrlReader)
     pm.register(FileReader())
     pm.register(MailReader())
+    pm.register(Keyring())
+    pm.register(Sql())
     return pm
 
 plugin_manager = init_plugin_manager()

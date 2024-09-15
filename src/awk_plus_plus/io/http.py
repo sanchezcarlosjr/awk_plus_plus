@@ -45,9 +45,11 @@ class ServiceError(Exception):
     | retry_if_exception_type(httpx.ReadTimeout)
     | retry_if_exception_type(httpx.WriteTimeout)
 )
-def request(method, url, headers=None, extensions=None):
+def request(method, url, headers=None, extensions=None, json_decode=False):
     if isinstance(headers, str) and headers != "":
         headers = json.loads(headers)
+    if headers is None:
+        headers = {"Accept": "application/json", "Content-Type": "application/json"}
     if extensions is None:
         extensions = {"force_cache": True}
     response = requests.request(method, url=url.replace("%3F", "?"), headers=headers, extensions=extensions)
@@ -57,15 +59,19 @@ def request(method, url, headers=None, extensions=None):
         if response.status_code != 200:
             return json.dumps(body)
         logger.info(body)
+        if json_decode:
+            return body
         return json.dumps(body)
     except Exception as e:
         logger.warn(url+str(e))
+        if json_decode:
+            return {"error": str(e)}
         return json.dumps({"error": str(e)})
 
 
-def post(url, headers=None):
-    return request("POST", url, headers)
+def post(url, headers=None, json_decode=False):
+    return request("POST", url, headers=headers, json_decode=json_decode)
 
 
-def http_get(url, headers=None):
-    return request("GET", url, headers)
+def http_get(url, headers=None, json_decode=False):
+    return request("GET", url, headers, json_decode=json_decode)

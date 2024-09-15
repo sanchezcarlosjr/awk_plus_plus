@@ -9,10 +9,10 @@ from dask.threaded import get
 from duckdb.typing import VARCHAR
 from rich.console import Console
 from awk_plus_plus import __version__, setup_logging, _logger
-from awk_plus_plus.actions import Actions, interpret_url
-from awk_plus_plus.dash import set_dict, walk
+from awk_plus_plus.actions import interpret_url
 from awk_plus_plus.io.assets import pd, read_from
 from awk_plus_plus.parser import SQLTemplate
+import keyring
 
 __author__ = "sanchezcarlosjr"
 __copyright__ = "sanchezcarlosjr"
@@ -34,7 +34,6 @@ from kink import di, inject
 
 from awk_plus_plus.io.http import post, http_get
 from awk_plus_plus.parser import SQLTemplate
-from awk_plus_plus.plugin_manager import plugin_manager
 
 app = typer.Typer()
 
@@ -44,7 +43,6 @@ def version():
     print(f"awk_plus_plus {__version__}")
 
 
-actions = Actions()
 
 
 def eval_jq(json_str: str, expression: str):
@@ -59,24 +57,11 @@ def serializer(obj):
     return json.JSONEncoder().default(obj)
 
 
-@actions.command(matcher=lambda parsed_url: parsed_url.scheme == "sql" and parsed_url)
-def sql(sql: ParseResult, db_connection: db.DuckDBPyConnection):
-    connection = db_connection()
-    try:
-        return connection.sql(SQLTemplate(sql.path.replace("`", "'").replace("´", "'")).render()).to_df().to_dict('records')
-    except Exception as e:
-        _logger.warn(e)
-        return None 
-
-
 def create_connection(name):
     def connect():
         connection = db.connect(name, config={'threads': 10})
         try:
-            connection.create_function('http_post', post, [VARCHAR, VARCHAR], VARCHAR, exception_handling="return_null")
-            connection.create_function('http_get', http_get, [VARCHAR, VARCHAR], VARCHAR,
-                                       exception_handling="return_null")
-            connection.create_function('jq', eval_jq, [VARCHAR, VARCHAR], VARCHAR, exception_handling="return_null")
+            connection.create_function('interpret', interpret_url, [VARCHAR], VARCHAR, exception_handling="return_null")
         except Exception as e:
             pass
         return connection
@@ -85,6 +70,8 @@ def create_connection(name):
     connection.sql("""
                     INSTALL json;
                     LOAD json;
+                    INSTALL https;
+                    LOAD https;
                     INSTALL excel;
                     LOAD excel;
                     INSTALL spatial;
@@ -92,66 +79,39 @@ def create_connection(name):
                 """)
     return connect
 
+import sys
+native_callbacks = {
+    'interpret': (('url',), interpret_url)
+}
+
 
 @app.command("i", help="Interpret an expression from a file or a string. interpret alias")
 @app.command("interpret",help="""
 Interpret an expression. Example:
-cti interpret '{"x": std.format("sql:SELECT * FROM %s", self.z), "z": "dataset", "exec_time": std.extVar("start_time")}' data/external/passwords.csv
+cti interpret '{"x": std.format("sql:SELECT * FROM %s", self.z), "z": "dataset", "exec_time": std.extVar("start_time")}'
 """)
-def interpret(expression: str, urls: Annotated[List[str], typer.Argument()] = None,
-              descriptor: Annotated[str, typer.Option(help="Describe what the expression is.")] = ".",
+def interpret(expression: str,
               verbose: Annotated[int, typer.Option("-v", help="Describe the verbosity.")] = 3,
               pretty: Annotated[bool, typer.Option("-p", help="Pretty print.")] = False,
-               db_name: Annotated[str, typer.Option(help="Database filename. If you wish to run the database in memory, you have to write it as :memory:")] = "db.sql"):
+              db_name: Annotated[str, typer.Option(help="Database filename. If you wish to run the database in memory, you have to write it as :memory:")] = "db.sql"):
     setup_logging(verbose * 10)
-    expression = os.path.isfile(expression) and open(expression).read() or expression
-    try:
-      json_str = _jsonnet.evaluate_snippet("snippet", expression, ext_vars={'start_time': str(datetime.now())})
-    except:
-      json_str = _jsonnet.evaluate_snippet("snippet", "'"+expression+"'", ext_vars={'start_time': str(datetime.now())})
-    json_obj = json.loads(json_str)
     connect = create_connection(db_name)
-    connection = connect()
-    urls = urls or []
+    di['db_name'] = db_name
+    di.factories['db_connection'] = lambda di: connect()
+    expression = os.path.isfile(expression) and open(expression).read() or expression
+    header = 'local interpret = std.native("interpret");'
+    try:
+      json_str = _jsonnet.evaluate_snippet("snippet", header+expression, ext_vars={'start_time': str(datetime.now())}, native_callbacks=native_callbacks)
+    except Exception as e:
+      _logger.warn(e)
+      json_str = _jsonnet.evaluate_snippet("snippet", header+"'"+expression+"'", ext_vars={'start_time': str(datetime.now())}, native_callbacks=native_callbacks)
+    json_obj = json.loads(json_str)
     console = Console()
-    directory = {
-       "normalized_name": [],
-       "name": [],
-    }
-    for url in urls:
-        _logger.info(url)
-        try:
-            results = plugin_manager.hook.read(url=interpret_url(url))
-            for result in results:
-                normalized_name = result[0]['normalized_name']
-                data = result[1]
-                connection.sql(f"CREATE TABLE IF NOT EXISTS '{normalized_name}' AS SELECT * FROM data;")
-                directory["normalized_name"].append(normalized_name)
-                directory["name"].append(url)
-        except Exception as e:
-            _logger.warn(e, url)
-    df_directory = pd.DataFrame.from_dict(directory)
-    if len(df_directory) > 0:
-        connection.sql("CREATE OR REPLACE TABLE object_directory AS select * from df_directory")
-    di['db_connection'] = lambda key: connect
-    di['actions'] = actions
-    walk_dag = inject(walk)
-    items = []
-    for item in jq.compile(descriptor).input_value(json_obj):
-        graph = {}
-        keys = []
-        for key, value in walk_dag(item):
-            graph[key] = value
-            keys.append(key)
-        results = get(graph, keys)
-        for key, value in enumerate(keys):
-            item = set_dict(dictionary=item, path=value, value=results[key])
-        if verbose <= 4 and not pretty:
-            print(json.dumps(item, default=serializer))
-        if verbose <= 4 and pretty:
-            console.print_json(json=json.dumps(item, default=serializer))
-        items.append(item)
-    return items
+    if pretty:
+        console.print_json(json.dumps(json_obj, indent=4, default=serializer))
+    else:
+        print(json.dumps(json_obj, default=serializer))
+    return json_obj
 
 
 
