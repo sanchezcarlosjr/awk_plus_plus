@@ -15,6 +15,8 @@ import keyring
 from kink import di
 import duckdb
 from awk_plus_plus.io.http import post, http_get
+import sys
+import sys
 
 class FileReader:
     """A hook implementation namespace."""
@@ -55,6 +57,24 @@ class Sql:
         db = di['db_connection']
         sql = url.path
         return db.sql(sql).to_df().to_dict('records')
+
+
+class Stream:
+    """A hook implementation namespace."""
+
+    @awk_plus_plus.hook_implementation
+    def read(self, url: ParseResult):
+        if url.scheme.lower() != "stream":
+            return None
+        lines = []
+        for line in sys.stdin:
+            if 'q' == line.rstrip():
+                break
+            lines.append(line)
+        return lines
+
+
+
 
 
 class Http:
