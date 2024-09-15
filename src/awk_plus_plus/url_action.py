@@ -14,6 +14,7 @@ import hashlib
 import keyring
 from kink import di
 import duckdb
+from awk_plus_plus.io.http import post, http_get
 
 class FileReader:
     """A hook implementation namespace."""
@@ -54,6 +55,17 @@ class Sql:
         db = di['db_connection']
         sql = url.path
         return db.sql(sql).to_df().to_dict('records')
+
+
+class Http:
+    """A hook implementation namespace."""
+
+    @awk_plus_plus.hook_implementation
+    def read(self, url: ParseResult):
+        scheme = url.scheme.lower()
+        if scheme != "http" and scheme != "https":
+            return None
+        return http_get(url.geturl(), json_decode=True)
 
 class MailReader:
     """A hook implementation namespace."""
