@@ -14,7 +14,8 @@ import hashlib
 import keyring
 from kink import di
 import duckdb
-from awk_plus_plus.io.http import post, http_get
+from awk_plus_plus.io.http import post, http_get, download
+from pathlib import Path
 import sys
 
 class FileReader:
@@ -73,7 +74,6 @@ class Stream:
         for line in netlocs.get(url.netloc, sys.stdin):
             lines.append(transform(line))
         return lines
-
 class Http:
     """A hook implementation namespace."""
 
@@ -82,6 +82,15 @@ class Http:
         scheme = url.scheme.lower()
         if scheme != "http" and scheme != "https":
             return None
+        queries = parse_qs(url.query)
+        if 'awk_download' in queries:
+             path = Path(queries['awk_download'][0])
+             path.parent.mkdir(parents=True, exist_ok=True)
+             try:
+               return download(url.geturl(), str(path))
+             except Exception as e:
+               logger.error(e)
+               return path
         return http_get(url.geturl(), json_decode=True)
 
 class MailReader:
