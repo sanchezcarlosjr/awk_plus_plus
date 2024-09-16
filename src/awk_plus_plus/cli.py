@@ -1,18 +1,11 @@
-import os.path
-import urllib.parse
-from datetime import datetime
-
-import _jsonnet
-import duckdb as db
-import jq
-from dask.threaded import get
-from duckdb.typing import VARCHAR
 from rich.console import Console
 from awk_plus_plus import __version__, setup_logging, _logger
-from awk_plus_plus.actions import interpret_url
-from awk_plus_plus.io.assets import pd, read_from
-from awk_plus_plus.parser import SQLTemplate
-import keyring
+import typer
+from typing import Optional, List
+from typing_extensions import Annotated
+import json
+from kink import di, inject
+from awk_plus_plus.interpreter.interpreter import evaluate, serializer
 
 __author__ = "sanchezcarlosjr"
 __copyright__ = "sanchezcarlosjr"
@@ -23,66 +16,12 @@ __license__ = "MIT"
 # API allowing them to be called directly from the terminal as a CLI
 # executable/script.
 
-import typer
-import os
-import getpass
-from typing import Optional, List
-from typing_extensions import Annotated
-import json
-from urllib.parse import ParseResult
-from kink import di, inject
-
-from awk_plus_plus.io.http import post, http_get
-from awk_plus_plus.parser import SQLTemplate
-
 app = typer.Typer()
 
 
 @app.command()
 def version():
     print(f"awk_plus_plus {__version__}")
-
-
-
-
-def eval_jq(json_str: str, expression: str):
-    return jq.compile(expression).input_text(json_str).text()
-
-
-def serializer(obj):
-    if isinstance(obj, pd.DataFrame):
-        return obj.to_dict(orient='records')
-    elif isinstance(obj, datetime):
-        return obj.isoformat()
-    return json.JSONEncoder().default(obj)
-
-
-def create_connection(name):
-    def connect():
-        connection = db.connect(name, config={'threads': 10})
-        try:
-            connection.create_function('interpret', interpret_url, [VARCHAR], VARCHAR, exception_handling="return_null")
-        except Exception as e:
-            pass
-        return connection
-
-    connection = connect()
-    connection.sql("""
-                    INSTALL json;
-                    LOAD json;
-                    INSTALL https;
-                    LOAD https;
-                    INSTALL excel;
-                    LOAD excel;
-                    INSTALL spatial;
-                    LOAD spatial;
-                """)
-    return connect
-
-import sys
-native_callbacks = {
-    'interpret': (('url',), interpret_url)
-}
 
 
 @app.command("i", help="Interpret an expression from a file or a string. interpret alias")
@@ -95,17 +34,7 @@ def interpret(expression: str,
               pretty: Annotated[bool, typer.Option("-p", help="Pretty print.")] = False,
               db_name: Annotated[str, typer.Option(help="Database filename. If you wish to run the database in memory, you have to write it as :memory:")] = "db.sql"):
     setup_logging(verbose * 10)
-    connect = create_connection(db_name)
-    di['db_name'] = db_name
-    di.factories['db_connection'] = lambda di: connect()
-    expression = os.path.isfile(expression) and open(expression).read() or expression
-    header = 'local interpret = std.native("interpret");'
-    try:
-      json_str = _jsonnet.evaluate_snippet("snippet", header+expression, ext_vars={'start_time': str(datetime.now())}, native_callbacks=native_callbacks)
-    except Exception as e:
-      _logger.warn(e)
-      json_str = _jsonnet.evaluate_snippet("snippet", header+"'"+expression+"'", ext_vars={'start_time': str(datetime.now())}, native_callbacks=native_callbacks)
-    json_obj = json.loads(json_str)
+    json_obj = evaluate(expression, db_name)
     console = Console()
     if pretty:
         console.print_json(json.dumps(json_obj, indent=4, default=serializer))

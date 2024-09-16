@@ -30,6 +30,17 @@ class FileReader:
         result['source'] = url.path
         return result.to_dict('records')
 
+class Sql:
+    """A hook implementation namespace."""
+
+    @awk_plus_plus.hook_implementation
+    def read(self, url: ParseResult):
+        if url.scheme.lower() != "sql":
+            return None
+        db = di['db_connection']
+        sql = url.path.replace("`", "'")
+        return db.sql(sql).to_df().to_dict('records')
+
 
 
 class Keyring:
@@ -44,18 +55,6 @@ class Keyring:
         service = path[1]
         key = path[2]
         return keyring.get_password(service, key)
-
-
-class Sql:
-    """A hook implementation namespace."""
-
-    @awk_plus_plus.hook_implementation
-    def read(self, url: ParseResult):
-        if url.scheme.lower() != "sql":
-            return None
-        db = di['db_connection']
-        sql = url.path.replace("`", "'")
-        return db.sql(sql).to_df().to_dict('records')
 
 
 class Stream:
@@ -74,10 +73,6 @@ class Stream:
         for line in netlocs.get(url.netloc, sys.stdin):
             lines.append(transform(line))
         return lines
-
-
-
-
 
 class Http:
     """A hook implementation namespace."""
@@ -113,7 +108,7 @@ class MailReader:
 
         normalized_name = hashlib.sha256(url.geturl().encode('utf-8')).hexdigest()[0:6]
         db.execute(f"""
-            CREATE TABLE IF NOT EXISTS {normalized_name} (
+            CREATE TABLE IF NOT EXISTS '{normalized_name}' (
                 subject TEXT,
                 sender TEXT,
                 recipient TEXT,
@@ -157,7 +152,7 @@ class MailReader:
 
 
                 query = f"""
-                 INSERT INTO {normalized_name} (subject, sender, recipient, cc, bcc, body, date)
+                 INSERT INTO '{normalized_name}' (subject, sender, recipient, cc, bcc, body, date)
                  VALUES (?, ?, ?, ?, ?, ?, ?)
                 """
                 values = (subject, from_, to_, cc_, bcc_, body, date_)
