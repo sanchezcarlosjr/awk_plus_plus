@@ -12,11 +12,11 @@
 
 # awk_plus_plus
 
-> A domain-specific language designed for data orchestration. 
+> A  language designed for data orchestration. 
 
 ## Features
-* Fuzzy modern regex engine
-* Semantic search
+* Fuzzy regex engine and Semantic search to retrieve information in an in-process DB.
+* End-user programming.
 * Orthogonal Persistence based on DuckDB
 * Transparent reference with Jsonnet. We plan to execute this future with Dask.
 * URL interpreter to manage data sources.
@@ -30,7 +30,7 @@ pip install awk_plus_plus
 # CLI Usage
 You output your data to JSON with the `cti` command.
 
-## JSONNET support
+## Jsonnet support
 ### Hello world
 ```bash
 cti i "Hello world" -p -v 4
@@ -68,6 +68,43 @@ cti i 'interpret("**/*.csv")'
 ```bash
 cti i 'interpret("sql:SELECT * FROM email")'
 ```
+
+## Leverage the Power of Reference with Jsonnet
+Unlike other programming languages that require multiple steps to reference data, Jsonnet requires only one step, thanks to its reference mechanism.
+This is particularly useful for data engineers who want to connect different services in a topological order. The code below represents this scenario in Python:
+```
+
+import requests
+
+def fetch_character(id):
+    url = f"https://rickandmortyapi.com/api/character/{id}"
+    response = requests.get(url)
+    return response.json()
+
+def process_character(character):
+    # Add new 'image' field with processed URL
+    character['image'] += f"?awk_download=data/{character['name'].replace(' ', '_').lower()}.jpeg"
+    
+    # Process 'episode' field, fetching additional data if necessary
+    character['episode'] = [requests.get(episode).json() for episode in character['episode']]
+    
+    return character
+
+
+print([process_character(fetch_character(id)) for id in [1, 2, 3, 4, 5, 6]])
+
+```
+Contrary to the previous Python code, Jsonnet allows you to leverage the power of referential transparency. The previous code is equivalent in Jsonnet to:
+
+```
+[
+   i("https://rickandmortyapi.com/api/character/%s" % id) + 
+    {image: i(super.image+"?awk_download=data/"+std.strReplace(std.asciiLower(super.name), " ", "_")+".jpeg")} + 
+    {episode: [i(episode) for episode in super.episode]}
+   for id in [1,2,3,4,5,6]
+]
+```
+
 
 
 ## Note
