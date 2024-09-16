@@ -74,6 +74,7 @@ class Stream:
         for line in netlocs.get(url.netloc, sys.stdin):
             lines.append(transform(line))
         return lines
+
 class Http:
     """A hook implementation namespace."""
 
