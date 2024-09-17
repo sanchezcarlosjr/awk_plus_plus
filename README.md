@@ -30,6 +30,12 @@ pip install awk_plus_plus
 # CLI Usage
 You output your data to JSON with the `cti` command.
 
+## Web service
+The command runs a web service with Gradio, allowing you to execute your expressions through a user-friendly user interface or by making HTTP requests.
+```bash
+cti run-webservice
+```
+
 ## Jsonnet support
 ### Hello world
 ```bash
@@ -103,6 +109,15 @@ Contrary to the previous Python code, Jsonnet allows you to leverage the power o
     {episode: [i(episode) for episode in super.episode]}
    for id in [1,2,3,4,5,6]
 ]
+```
+
+# Connect and call different data sources in one expression
+```jsonnet
+{
+   "emails": i("sql:SELECT subject FROM `%s`" %  self.email),
+   // This expression saves the unseen emails from your inbox, as defined in your keyring, using IMAP query criteria. It then returns the netloc hash, which refers to the table.
+   "email": i(i("keyring://backend/awk_plus_plus/primary_email")+"?q=UNSEEN")
+}
 ```
 
 
