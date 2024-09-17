@@ -18,7 +18,7 @@
 * Fuzzy regex engine and Semantic search to retrieve information in an in-process DB.
 * End-user programming.
 * Orthogonal Persistence based on DuckDB
-* Transparent reference with Jsonnet. We plan to execute this future with Dask.
+* Transparent reference with Jsonnet. We plan to execute this feature with Dask.
 * URL interpreter to manage data sources.
 
 ## Installation from pip
