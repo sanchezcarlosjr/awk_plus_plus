@@ -12,17 +12,14 @@
 
 # awk_plus_plus
 
-> A domain-specific language designed for data orchestration. 
+> A  language designed for data orchestration. 
 
 ## Features
-* Fuzzy modern regex engine
-* Semantic search
-* Text classification
-* Named entity recognition
-* Entity extraction
-* Entity linking
-* B-tree search 
-
+* Fuzzy regex engine and Semantic search to retrieve information in an in-process DB.
+* End-user programming.
+* Orthogonal Persistence based on DuckDB
+* Transparent reference with Jsonnet. We plan to execute this feature with Dask.
+* URL interpreter to manage data sources.
 
 ## Installation from pip
 Install the package with:
@@ -33,27 +30,95 @@ pip install awk_plus_plus
 # CLI Usage
 You output your data to JSON with the `cti` command.
 
-## JSONNET support
+## Web service
+The command runs a web service with Gradio, allowing you to execute your expressions through a user-friendly user interface or by making HTTP requests.
 ```bash
-cti interpret '1+2+3'
+cti run-webservice
 ```
 
+## Jsonnet support
+### Hello world
 ```bash
-cti interpret '{"foo": "bar"}'
+cti i "Hello world" -p -v 4
 ```
 
-## DuckDB support
-
+### Jsonnet support
 ```bash
-cti interpret '{"foo": "sql: select 1+2+3"}'
+cti i '{"keys":: ["AWK", "SED", "SHELL"], "languages": [std.asciiLower(x) for x in self.keys]}'
 ```
 
-## Smart Data reader
+## URL interpreter
+Our step further is the URL interpreter which allows you to manage different data sources with an unique syntax across a set of plugins.
 
+## STDIN, STDOUT, STDERR
 ```bash
-cti interpret '{"foo": "sql:SELECT * FROM file_csv"}' *.csv
+cti i '{"lines": interpret("stream://stdin?strip=true")}'
 ```
 
+## Imap
+```bash
+cti i '{"emails": interpret("imap://USER:PASSWORD@HOST:993/INBOX")}'
+```
+
+## Keyring
+```bash
+cti i '{"email":: interpret("keyring://backend/awk_plus_plus/email"), "emails": interpret($.email)}'
+```
+
+## Files
+```bash
+cti i 'interpret("**/*.csv")'
+```
+
+## SQL
+```bash
+cti i 'interpret("sql:SELECT * FROM email")'
+```
+
+## Leverage the Power of Reference with Jsonnet
+Unlike other programming languages that require multiple steps to reference data, Jsonnet requires only one step, thanks to its reference mechanism.
+This is particularly useful for data engineers who want to connect different services in a topological order. The code below represents this scenario in Python:
+```python
+
+import requests
+
+def fetch_character(id):
+    url = f"https://rickandmortyapi.com/api/character/{id}"
+    response = requests.get(url)
+    return response.json()
+
+def process_character(character):
+    # Add new 'image' field with processed URL
+    character['image'] += f"?awk_download=data/{character['name'].replace(' ', '_').lower()}.jpeg"
+    
+    # Process 'episode' field, fetching additional data if necessary
+    character['episode'] = [requests.get(episode).json() for episode in character['episode']]
+    
+    return character
+
+
+print([process_character(fetch_character(id)) for id in [1, 2, 3, 4, 5, 6]])
+
+```
+Contrary to the previous Python code, Jsonnet allows you to leverage the power of referential transparency. The previous code is equivalent in Jsonnet to:
+
+```jsonnet
+[
+   i("https://rickandmortyapi.com/api/character/%s" % id) + 
+    {image: i(super.image+"?awk_download=data/"+std.strReplace(std.asciiLower(super.name), " ", "_")+".jpeg")} + 
+    {episode: [i(episode) for episode in super.episode]}
+   for id in [1,2,3,4,5,6]
+]
+```
+
+## Connect and call different data sources in one expression
+```jsonnet
+{
+   "emails": i("sql:SELECT subject FROM `%s`" %  self.email),
+   // This expression saves the unseen emails from your inbox, as defined in your keyring, using IMAP query criteria. It then returns the netloc hash, which refers to the table.
+   "email": i(i("keyring://backend/awk_plus_plus/primary_email")+"?q=UNSEEN")
+}
+```
 
 
 

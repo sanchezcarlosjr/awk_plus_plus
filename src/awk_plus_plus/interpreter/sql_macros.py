@@ -12,11 +12,6 @@ def schema(evaluator: MacroEvaluator, url: str) -> str:
 def s(evaluator: MacroEvaluator, value: str) -> str:
     return f"'{value}'"
 
-
-@macro()
-def grep(evaluator: MacroEvaluator, expression: str) -> str:
-    return f"SELECT * FROM object_directory where name ILIKE '%' || '{expression}' || '%'"
-
 @macro()
 def f(evaluator: MacroEvaluator, name: SQL, arg: SQL) -> SQL:
     return f"CREATE OR REPLACE FUNCTION {name}({arg}) AS "

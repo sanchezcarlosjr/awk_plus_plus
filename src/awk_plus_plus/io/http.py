@@ -45,6 +45,18 @@ class ServiceError(Exception):
     | retry_if_exception_type(httpx.ReadTimeout)
     | retry_if_exception_type(httpx.WriteTimeout)
 )
+def download(url, path, method='GET', headers=None, extensions=None):
+    response = requests.request(method, url=url, headers=headers, extensions=extensions)
+    with open(path, 'wb') as f:
+        f.write(response.content)
+    return path
+
+
+@retry(
+    retry=retry_if_exception_type(httpx.TimeoutException)
+    | retry_if_exception_type(httpx.ReadTimeout)
+    | retry_if_exception_type(httpx.WriteTimeout)
+)
 def request(method, url, headers=None, extensions=None, json_decode=False):
     if isinstance(headers, str) and headers != "":
         headers = json.loads(headers)
@@ -52,7 +64,7 @@ def request(method, url, headers=None, extensions=None, json_decode=False):
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
     if extensions is None:
         extensions = {"force_cache": True}
-    response = requests.request(method, url=url.replace("%3F", "?"), headers=headers, extensions=extensions)
+    response = requests.request(method, url=url, headers=headers, extensions=extensions)
 
     try:
         body = response.json()
