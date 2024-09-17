@@ -128,7 +128,7 @@ class MailReader:
                 cc TEXT,
                 bcc TEXT,
                 body TEXT,
-                date TIMESTAMPTZ
+                received_at TIMESTAMPTZ
             )
         """)
 
@@ -169,7 +169,7 @@ class MailReader:
 
 
                 query = f"""
-                 INSERT INTO '{normalized_name}' (id, subject, sender, recipient, cc, bcc, body, date)
+                 INSERT INTO '{normalized_name}' (id, subject, sender, recipient, cc, bcc, body, received_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                  ON CONFLICT (id)
                  DO NOTHING
