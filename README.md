@@ -111,7 +111,7 @@ Contrary to the previous Python code, Jsonnet allows you to leverage the power o
 ]
 ```
 
-# Connect and call different data sources in one expression
+## Connect and call different data sources in one expression
 ```jsonnet
 {
    "emails": i("sql:SELECT subject FROM `%s`" %  self.email),
