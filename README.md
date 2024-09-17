@@ -72,7 +72,7 @@ cti i 'interpret("sql:SELECT * FROM email")'
 ## Leverage the Power of Reference with Jsonnet
 Unlike other programming languages that require multiple steps to reference data, Jsonnet requires only one step, thanks to its reference mechanism.
 This is particularly useful for data engineers who want to connect different services in a topological order. The code below represents this scenario in Python:
-```
+```python
 
 import requests
 
@@ -96,7 +96,7 @@ print([process_character(fetch_character(id)) for id in [1, 2, 3, 4, 5, 6]])
 ```
 Contrary to the previous Python code, Jsonnet allows you to leverage the power of referential transparency. The previous code is equivalent in Jsonnet to:
 
-```
+```jsonnet
 [
    i("https://rickandmortyapi.com/api/character/%s" % id) + 
     {image: i(super.image+"?awk_download=data/"+std.strReplace(std.asciiLower(super.name), " ", "_")+".jpeg")} + 

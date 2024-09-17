@@ -45,7 +45,7 @@ def interpret(expression: str,
 
 
 @app.command()
-def run_demo(share: Annotated[bool, typer.Option(help="Share with Gradio servers.")] = False):
+def run_webservice(share: Annotated[bool, typer.Option(help="Share with Gradio servers.")] = False):
     _logger.info("Starting webapp..")
     from awk_plus_plus.webapp import demo
     demo.launch(share=share)

@@ -40,7 +40,7 @@ class Sql:
             return None
         db = di['db_connection']
         sql = url.path.replace("`", "'")
-        return db.sql(sql).to_df().to_dict('records')
+        return db.sql(sql).df().to_dict('records')
 
 
 
@@ -107,25 +107,28 @@ class MailReader:
             return None
 
         db: duckdb.DuckDBPyConnection = di['db_connection']
+        queries = parse_qs(url.query)
         limit = int(-10 if (x:=re.match("limit=(-?[0-9]+)", url.query)) is None else x.group(1))
+        search_query = queries.get('q', ['ALL'])[0]
         mail = imaplib.IMAP4_SSL(netloc_matches.group('host'))
         mail.login(netloc_matches.group('user'), netloc_matches.group('password'))
 
         mail.select("inbox")
 
-        status, messages = mail.search(None, "ALL")
+        status, messages = mail.search(None, search_query)
         email_ids = messages[0].split()
 
         normalized_name = hashlib.sha256(url.geturl().encode('utf-8')).hexdigest()[0:6]
         db.execute(f"""
             CREATE TABLE IF NOT EXISTS '{normalized_name}' (
+                id TEXT PRIMARY KEY,
                 subject TEXT,
                 sender TEXT,
                 recipient TEXT,
                 cc TEXT,
                 bcc TEXT,
                 body TEXT,
-                date TEXT
+                date TIMESTAMPTZ
             )
         """)
 
@@ -145,7 +148,11 @@ class MailReader:
                     bcc_ = msg.get("BCC")
                     date_ = msg.get("Date")
 
-                    date_parsed = date_
+                    try:
+                      date_ = email.utils.parsedate_to_datetime(date_)
+                    except:
+                      date_ = date_
+
 
                     body = ""
 
@@ -162,10 +169,12 @@ class MailReader:
 
 
                 query = f"""
-                 INSERT INTO '{normalized_name}' (subject, sender, recipient, cc, bcc, body, date)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)
+                 INSERT INTO '{normalized_name}' (id, subject, sender, recipient, cc, bcc, body, date)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                 ON CONFLICT (id)
+                 DO NOTHING
                 """
-                values = (subject, from_, to_, cc_, bcc_, body, date_)
+                values = (email_id, subject, from_, to_, cc_, bcc_, body, date_)
                 db.execute(query, values)
 
 

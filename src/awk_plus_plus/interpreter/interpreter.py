@@ -19,7 +19,9 @@ def interpret(url: str):
     results = plugin_manager.hook.read(url=parsed_result)
     if results is None or len(results) == 0:
         return None
-    return results[0]
+    if len(results) == 1:
+        return results[0]
+    return results
 
 
 def eval_jq(json_str: str, expression: str):
@@ -55,6 +57,7 @@ def create_connection(name):
                     LOAD spatial;
                 """)
     return connect
+
 
 native_callbacks = {
     'interpret': (('url',), interpret),
