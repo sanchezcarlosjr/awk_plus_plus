@@ -117,6 +117,7 @@ class MailReader:
 
         status, messages = mail.search(None, search_query)
         email_ids = messages[0].split()
+        print(messages)
 
         normalized_name = hashlib.sha256(url.netloc.encode('utf-8')).hexdigest()[0:6]
         db.execute(f"""
