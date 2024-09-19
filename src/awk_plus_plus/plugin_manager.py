@@ -1,6 +1,6 @@
 import pluggy
 from awk_plus_plus import hook_implementation, dist_name
-from awk_plus_plus.interpreter.std import FileReader, MailReader, Keyring, Sql, Http, Stream
+from awk_plus_plus.interpreter.std import FileReader, MailReader, Keyring, Sql, Http, Stream, Pop3MailReader
 from awk_plus_plus import _logger as logger
 from urllib.parse import ParseResult
 
@@ -24,6 +24,7 @@ def init_plugin_manager():
     pm.register(Sql())
     pm.register(Http())
     pm.register(Stream())
+    pm.register(Pop3MailReader())
     return pm
 
 plugin_manager = init_plugin_manager()
