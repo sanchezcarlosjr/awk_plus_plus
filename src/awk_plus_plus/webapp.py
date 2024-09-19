@@ -1,6 +1,7 @@
 import gradio as gr
 from awk_plus_plus.interpreter.interpreter import evaluate, serializer
 from kink import di
+import pandas as pd
 
 theme = gr.themes.Base(font=["DM Sans", 'ui-sans-serif', 'system-ui', '-apple-system'])
 
@@ -21,10 +22,13 @@ def predict(expression):
     return evaluate(expression, "db.sql")
 
 
+def predict_as_dataframe(expression):
+    return pd.DataFrame.from_records(predict(expression))
+
 with gr.Blocks(theme=theme, title="awk_plus_plus", css=css, analytics_enabled=False) as demo:
     gr.Markdown("# Greetings from Awk Plus Plus!")
     expression = gr.Code(label="Expression", language="json")
     submit_btn = gr.Button("Interpret")
-    result = gr.JSON()
-    submit_btn.click(fn=predict, inputs=expression, outputs=result, api_name="interpret")
+    result = gr.DataFrame()
+    submit_btn.click(fn=predict_as_dataframe, inputs=expression, outputs=result, api_name="interpret")
 

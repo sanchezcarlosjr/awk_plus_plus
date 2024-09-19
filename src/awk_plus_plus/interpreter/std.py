@@ -15,6 +15,7 @@ import keyring
 from kink import di
 import duckdb
 from awk_plus_plus.io.http import post, http_get, download
+from awk_plus_plus.interpreter.sql_macros import SQLTemplate 
 from pathlib import Path
 import sys
 import poplib
@@ -43,7 +44,7 @@ class Sql:
         if url.scheme.lower() != "sql":
             return None
         db = di['db_connection']
-        sql = url.path.replace("`", "'")
+        sql = SQLTemplate(sql.path.replace("`", "'").replace("´", "'"))
         return db.sql(sql).df().to_dict('records')
 
 
