@@ -28,6 +28,7 @@ def predict_as_dataframe(expression):
 with gr.Blocks(theme=theme, title="awk_plus_plus", css=css, analytics_enabled=False) as demo:
     gr.Markdown("# Greetings from Awk Plus Plus!")
     expression = gr.Code(label="Expression", language="json")
+    gr.Examples([""" i("sql:SELECT * FROM VALUES (1)")  """, "Systems"], inputs=[expression])
     submit_btn = gr.Button("Interpret")
     result = gr.DataFrame()
     submit_btn.click(fn=predict_as_dataframe, inputs=expression, outputs=result, api_name="interpret")

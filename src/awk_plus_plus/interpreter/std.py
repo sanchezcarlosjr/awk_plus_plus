@@ -44,7 +44,7 @@ class Sql:
         if url.scheme.lower() != "sql":
             return None
         db = di['db_connection']
-        sql = SQLTemplate(sql.path.replace("`", "'").replace("´", "'"))
+        sql = SQLTemplate(url.path.replace("`", "'").replace("´", "'")).render()
         return db.sql(sql).df().to_dict('records')
 
 
