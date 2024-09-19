@@ -120,7 +120,13 @@ Contrary to the previous Python code, Jsonnet allows you to leverage the power o
 }
 ```
 
-
+# Protocols and Plugins
+* pop3://
+* imap://
+* keyring://backend/<service>/<username>
+* sql:<expression>
+* https://
+* file:/
 
 ## Note
 
