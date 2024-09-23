@@ -12,14 +12,20 @@
 
 # awk_plus_plus
 
-> A  language designed for data orchestration. 
+> A  language designed for data orchestration.
+
+
+AWK has long been a cornerstone of UNIX culture and a powerful tool for data science tasks. However, it can become difficult to manage unstructured data meshes, especially when dealing with modern formats, protocols, and information retrieval systems, where structured queries are needed. We propose AWK++, a language inspired by AWK, where users can query, receive answers, and execute actions based on patterns in ingested data.
+
+AWK++ is conceptualized as a metadata layer or middleware for storage systems, introducing an architecture designed to handle distributed datasets and large language models (LLMs). The language segregates resources to enhance functionality by incorporating DuckDB as an in-process database and Jsonnet as an assembly language to interpret URLs, along with Lark for macro-based parsing. Like GraphQL, AWK++ follows a "what you see is what you get" model; however, unlike GraphQL, it does not impose a strict type system. Additionally, others systems can query an AWK++ service via HTTP, providing flexibility for external interacdtions.
+
 
 ## Features
-* Fuzzy regex engine and Semantic search to retrieve information in an in-process DB.
-* End-user programming.
-* Orthogonal Persistence based on DuckDB
-* Transparent reference with Jsonnet. We plan to execute this feature with Dask.
-* URL interpreter to manage data sources.
+* **Fuzzy regex engine** and **semantic search** for retrieving information from an in-process database.
+* **End-user programming** capabilities.
+* **Orthogonal Persistence** implemented with DuckDB and SQL Macros.
+* **Transparent reference** using Jsonnet, with plans to execute we plan to execute this feature via Dask.
+* **URL interpreter** for managing different data sources, protocols, and schedulers with plugins.
 
 ## Installation from pip
 Install the package with:
@@ -41,18 +47,45 @@ cti run-webservice
 ```bash
 cti i "Hello world" -p -v 4
 ```
+Output:
+```bash
+"Hello world"
+````
 
 ### Jsonnet support
 ```bash
 cti i '{"keys":: ["AWK", "SED", "SHELL"], "languages": [std.asciiLower(x) for x in self.keys]}'
 ```
 
+Output:
+```json
+{
+   "languages": [
+        "awk",
+        "sed",
+        "shell"
+   ]
+}
+```
+
 ## URL interpreter
 Our step further is the URL interpreter which allows you to manage different data sources with an unique syntax across a set of plugins.
 
 ## STDIN, STDOUT, STDERR
+Traditional UNIX streams are supported in AWK++. For instance, the following command will read from a file with content `hello\nworld<EOF>` and write it to the standard output:
+
 ```bash
-cti i '{"lines": interpret("stream://stdin?strip=true")}'
+cat file.txt | cti i '{"lines": interpret("stream://stdin?strip=true")}'
+```
+
+Output:
+```bash
+{
+   "lines": [
+        "hello",
+        "world"
+   ]
+}
 ```
 
 ## Imap
