@@ -131,11 +131,11 @@ Then take a look into the `scripts` and `notebooks` folders.
 ## Contribution
 awk_plus_plus employs [Tox](https://tox.wiki/en/stable/) to automate Package tasks such as packaging, testing and building.
 
-tox -e docs  # to build your documentation
-tox -e build  # to build your package distribution
-tox -e publish  # to test your project uploads correctly in test.pypi.org
-tox -e publish -- --repository pypi  # to release your package to PyPI
-tox -av  # to list all the tasks available
+tox -e docs  # to build documentation
+tox -e build  # to build package distribution
+tox -e publish  # to test project uploads correctly in test.pypi.org
+tox -e publish -- --repository pypi  # to release package to PyPI
+tox -av  # to list all tasks available
 
 
 ## Documentation Improvements
